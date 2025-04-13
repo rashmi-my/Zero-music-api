@@ -4,20 +4,25 @@ export default async function handler(req, res) {
   const name = req.query.name;
 
   if (!name) {
-    return res.status(400).json({
+    res.setHeader("Content-Type", "application/json");
+    res.status(400).end(JSON.stringify({
       status: "error",
-      message: "Please provide a music name using ?name=",
-    });
+      message: "Please provide a music name using ?name="
+    }, null, 2));
+    return;
   }
 
-  const searchQuery = `yt-dlp --default-search ytsearch1:${name} --get-id --get-title --get-thumbnail`;
+  const searchQuery = `yt-dlp --default-search ytsearch1:"${name}" --get-title --get-id --get-thumbnail`;
 
   exec(searchQuery, (err, stdout, stderr) => {
     if (err || stderr) {
-      return res.status(500).json({
+      res.setHeader("Content-Type", "application/json");
+      res.status(500).end(JSON.stringify({
         status: "error",
         message: "Failed to fetch music",
-      });
+        error: stderr || err.toString()
+      }, null, 2));
+      return;
     }
 
     const [title, videoId, thumbnail] = stdout.trim().split("\n");
@@ -25,7 +30,7 @@ export default async function handler(req, res) {
     const mp3Url = `https://api.vevioz.com/@api/button/mp3/${videoId}`;
 
     res.setHeader("Content-Type", "application/json");
-    res.status(200).end(JSON.stringify({
+    res.write(JSON.stringify({
       status: "success",
       result: {
         title,
@@ -34,6 +39,7 @@ export default async function handler(req, res) {
         mp3: `https://dl.musiczero.vercel.app/mp3/${videoId}.mp3`,
         stream_direct: mp3Url
       }
-    }, null, 2)); // Pretty print
+    }, null, 2));
+    res.end();
   });
 }
